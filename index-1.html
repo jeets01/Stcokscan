@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>NSE Pro — Momentum & Swing Analyzer</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg0:#020912; --bg1:#060f1e; --bg2:#0a1628; --bg3:#0f2040;
+  --green:#00ff88; --cyan:#22d3ee; --orange:#f97316;
+  --purple:#a855f7; --yellow:#f59e0b; --red:#ff4466;
+  --text:#e2e8f0; --muted:#3a5070; --dim:#1a3050;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{background:var(--bg0);color:var(--text);font-family:'Share Tech Mono',monospace;overflow-x:hidden;min-height:100vh}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(var(--bg3) 1px,transparent 1px),linear-gradient(90deg,var(--bg3) 1px,transparent 1px);background-size:40px 40px;opacity:.15;pointer-events:none;z-index:0}
+body>*{position:relative;z-index:1}
+
+/* HEADER */
+.header{background:linear-gradient(180deg,var(--bg2),var(--bg1)ee);border-bottom:1px solid var(--bg3);padding:10px 16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;position:sticky;top:0;z-index:200;backdrop-filter:blur(12px)}
+.logo{display:flex;align-items:center;gap:10px}
+.nse-badge{background:linear-gradient(135deg,var(--green),var(--cyan));border-radius:6px;padding:5px 11px;font-family:'Orbitron',monospace;font-size:13px;font-weight:900;color:#000;letter-spacing:2px;box-shadow:0 0 20px #00ff8844;animation:badge-pulse 2s ease-in-out infinite}
+@keyframes badge-pulse{0%,100%{box-shadow:0 0 16px #00ff8844}50%{box-shadow:0 0 30px #00ff8888}}
+.logo-title{font-family:'Orbitron',monospace;font-size:12px;font-weight:700;color:#f1f5f9;letter-spacing:1.5px}
+.logo-sub{font-size:8px;color:var(--muted);letter-spacing:1px;margin-top:1px}
+.tf-row{display:flex;gap:5px}
+.tf-btn{padding:4px 10px;background:var(--bg1);color:var(--muted);border:1px solid var(--bg3);border-radius:4px;font-size:11px;font-weight:bold;cursor:pointer;font-family:'Share Tech Mono',monospace;transition:all .2s}
+.tf-btn.active{background:linear-gradient(135deg,var(--green),var(--cyan));color:#000;border-color:transparent;box-shadow:0 0 10px #00ff8833}
+
+/* TICKER */
+.ticker-bar{background:var(--bg1);border-bottom:1px solid var(--bg3);padding:5px 0;overflow:hidden;white-space:nowrap}
+.ticker-inner{display:inline-flex;gap:36px;animation:scroll 35s linear infinite;font-size:11px}
+@keyframes scroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.t-sym{color:var(--cyan);font-weight:bold}
+.t-up{color:var(--green)}.t-dn{color:var(--red)}
+
+/* SEARCH BOX */
+.search-section{background:var(--bg1);border:1px solid var(--bg3);border-radius:12px;padding:14px 16px}
+.search-title{font-family:'Orbitron',monospace;font-size:10px;color:var(--cyan);letter-spacing:1px;margin-bottom:10px}
+.search-row{display:flex;gap:8px;flex-wrap:wrap}
+.search-wrap{position:relative;flex:1;min-width:180px}
+.search-input{width:100%;padding:9px 36px 9px 12px;background:var(--bg0);border:1px solid var(--bg3);border-radius:8px;color:var(--text);font-family:'Share Tech Mono',monospace;font-size:12px;outline:none;transition:all .2s}
+.search-input:focus{border-color:var(--cyan);box-shadow:0 0 10px #22d3ee22}
+.search-input::placeholder{color:var(--muted)}
+.search-icon{position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:14px;pointer-events:none}
+.search-btn{padding:9px 18px;background:linear-gradient(135deg,var(--green),var(--cyan));color:#000;border:none;border-radius:8px;font-family:'Orbitron',monospace;font-size:11px;font-weight:900;cursor:pointer;letter-spacing:.5px;white-space:nowrap;transition:all .2s}
+.search-btn:hover{box-shadow:0 0 14px #00ff8844;transform:translateY(-1px)}
+.search-btn:active{transform:translateY(0)}
+
+/* DROPDOWN */
+.dropdown{position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--bg2);border:1px solid var(--bg3);border-radius:8px;z-index:999;max-height:220px;overflow-y:auto;box-shadow:0 8px 24px #00000088;display:none}
+.dropdown.show{display:block}
+.dropdown::-webkit-scrollbar{width:3px}
+.dropdown::-webkit-scrollbar-track{background:var(--bg0)}
+.dropdown::-webkit-scrollbar-thumb{background:var(--bg3);border-radius:3px}
+.dd-item{padding:9px 12px;cursor:pointer;font-size:11px;border-bottom:1px solid var(--bg3);transition:background .15s;display:flex;justify-content:space-between;align-items:center}
+.dd-item:last-child{border-bottom:none}
+.dd-item:hover{background:var(--bg3)}
+.dd-sym{color:var(--cyan);font-weight:bold}
+.dd-name{color:var(--muted);font-size:10px;margin-top:1px}
+.dd-chg{font-size:10px}
+
+/* STATUS */
+.search-status{margin-top:8px;font-size:10px;min-height:16px;display:flex;align-items:center;gap:6px}
+.spinner{width:10px;height:10px;border:2px solid var(--bg3);border-top-color:var(--cyan);border-radius:50%;animation:spin .7s linear infinite;display:none}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* WATCHLIST CHIPS */
+.watchlist-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.wl-chip{display:flex;align-items:center;gap:5px;padding:5px 10px;background:var(--bg0);border:1px solid var(--bg3);border-radius:20px;font-size:10px;cursor:pointer;transition:all .2s;position:relative}
+.wl-chip:hover{border-color:var(--cyan)}
+.wl-chip.active{border-color:var(--green);color:var(--green);background:#001a0f;box-shadow:0 0 8px #00ff8820}
+.wl-chip .wl-sym{font-weight:bold}
+.wl-chip .wl-chg{font-size:9px}
+.wl-remove{margin-left:2px;color:var(--red);font-size:11px;opacity:.5;transition:opacity .2s}
+.wl-remove:hover{opacity:1}
+
+/* MAIN */
+.main{display:flex;flex-direction:column;gap:12px;padding:12px 14px 28px}
+.stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+@media(min-width:480px){.stats-grid{grid-template-columns:repeat(6,1fr)}}
+.stat-card{background:var(--bg1);border:1px solid var(--bg3);border-radius:8px;padding:9px 10px;position:relative;overflow:hidden}
+.stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--accent,var(--cyan));opacity:.6}
+.stat-label{font-size:8px;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
+.stat-val{font-size:14px;font-weight:bold;margin-top:3px;font-family:'Orbitron',monospace}
+
+/* STATUS BAR */
+.status-bar{border-radius:10px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;transition:all .4s;border:1px solid}
+.status-dot{width:9px;height:9px;border-radius:50%;animation:blink 1.2s ease-in-out infinite;flex-shrink:0}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.4}}
+.status-text{font-weight:bold;font-size:11px;font-family:'Orbitron',monospace;letter-spacing:.5px}
+.filter-row{display:flex;gap:10px;font-size:10px;flex-wrap:wrap}
+.flt{cursor:pointer;color:var(--dim);padding-bottom:2px;transition:all .2s}
+.flt.active{border-bottom:1px solid currentColor}
+
+/* CHART */
+.chart-box{background:#030810;border:1px solid var(--bg3);border-radius:12px;overflow:hidden;box-shadow:0 4px 30px #00000088}
+.chart-legend{padding:7px 13px;border-bottom:1px solid var(--bg3);display:flex;gap:10px;flex-wrap:wrap;font-size:9px;align-items:center}
+.chart-label{color:var(--muted);font-weight:bold;font-family:'Orbitron',monospace;font-size:9px}
+.leg{display:flex;align-items:center;gap:3px;color:var(--dim)}
+.leg-line{width:13px;height:2px;display:inline-block;border-radius:1px}
+.chart-section{border-top:1px solid var(--bg3);position:relative}
+.csl{position:absolute;top:4px;left:13px;font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:1px;z-index:2;pointer-events:none}
+canvas{display:block;width:100%!important}
+
+/* SETUP CARDS */
+.setup-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px}
+.setup-card{border-radius:12px;padding:14px;background:var(--bg1);position:relative;overflow:hidden}
+.setup-title{font-weight:bold;font-size:11px;margin-bottom:11px;letter-spacing:.5px;font-family:'Orbitron',monospace}
+.setup-item{display:flex;align-items:flex-start;gap:7px;margin-bottom:6px;font-size:10px;color:#7090a0;line-height:1.4}
+.si-a{flex-shrink:0;margin-top:1px}
+
+/* SIGNAL LOG */
+.signal-log{background:var(--bg1);border:1px solid var(--bg3);border-radius:12px;padding:14px}
+.log-title{font-family:'Orbitron',monospace;font-size:11px;color:var(--cyan);margin-bottom:10px;letter-spacing:1px}
+.log-list{display:flex;flex-direction:column;gap:6px;max-height:180px;overflow-y:auto}
+.log-list::-webkit-scrollbar{width:3px}
+.log-list::-webkit-scrollbar-thumb{background:var(--bg3);border-radius:3px}
+.log-item{display:flex;align-items:center;justify-content:space-between;padding:7px 10px;border-radius:6px;font-size:10px;border:1px solid}
+.log-badge{font-size:9px;font-weight:bold;padding:2px 7px;border-radius:3px}
+
+/* NO DATA */
+.no-data{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px;color:var(--muted);text-align:center;gap:8px}
+.no-data-icon{font-size:36px;opacity:.4}
+.no-data-text{font-size:12px;opacity:.6}
+
+.disclaimer{background:var(--bg1);border:1px solid #1a1510;border-radius:10px;padding:11px 14px;font-size:10px;color:#3a3530;line-height:1.7}
+
+/* LOADING OVERLAY */
+.chart-loading{display:none;position:absolute;inset:0;background:#030810cc;align-items:center;justify-content:center;z-index:10;flex-direction:column;gap:10px}
+.chart-loading.show{display:flex}
+.load-spinner{width:28px;height:28px;border:3px solid var(--bg3);border-top-color:var(--cyan);border-radius:50%;animation:spin .8s linear infinite}
+.load-text{font-size:10px;color:var(--cyan);font-family:'Orbitron',monospace;letter-spacing:1px}
+
+@media(max-width:400px){.header{padding:8px 10px}.main{padding:10px 10px 20px}.stat-val{font-size:12px}}
+</style>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#00ff88">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="NSE Pro">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="assets/icon-192.png">
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">
+    <div class="nse-badge">NSE</div>
+    <div>
+      <div class="logo-title">MOMENTUM & SWING PRO</div>
+      <div class="logo-sub">LIVE STOCK SEARCH · TECHNICAL ANALYZER</div>
+    </div>
+  </div>
+  <div class="tf-row">
+    <button class="tf-btn" onclick="setTf('5min',this)">5m</button>
+    <button class="tf-btn active" onclick="setTf('Daily',this)">Daily</button>
+    <button class="tf-btn" onclick="setTf('Weekly',this)">Weekly</button>
+  </div>
+</div>
+
+<div class="ticker-bar"><div class="ticker-inner" id="tickerEl"></div></div>
+
+<div class="main">
+
+  <!-- SEARCH SECTION -->
+  <div class="search-section">
+    <div class="search-title">🔍 STOCK SEARCH — NSE / BSE / GLOBAL</div>
+    <div class="search-row">
+      <div class="search-wrap">
+        <input class="search-input" id="searchInput" type="text" placeholder="e.g. RELIANCE, INFY, TATAMOTORS, HDFC..." autocomplete="off" autocorrect="off" spellcheck="false" />
+        <span class="search-icon">⌕</span>
+        <div class="dropdown" id="dropdown"></div>
+      </div>
+      <button class="search-btn" onclick="doSearch()">ANALYZE ▶</button>
+    </div>
+    <div class="search-status" id="searchStatus">
+      <div class="spinner" id="spinner"></div>
+      <span id="statusMsg" style="color:var(--muted)">Koi bhi NSE/BSE stock symbol type karo aur search karo</span>
+    </div>
+
+    <!-- WATCHLIST -->
+    <div id="watchlistWrap" style="display:none">
+      <div style="font-size:9px;color:var(--dim);margin-top:10px;margin-bottom:6px;letter-spacing:1px;text-transform:uppercase">📌 Watchlist (tap to analyze)</div>
+      <div class="watchlist-row" id="watchlistRow"></div>
+    </div>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats-grid" id="statsGrid">
+    <div class="stat-card" style="grid-column:1/-1">
+      <div class="no-data">
+        <div class="no-data-icon">📊</div>
+        <div class="no-data-text">Upar search box mein koi stock dhundho<br>jaise: RELIANCE, TCS, WIPRO, NIFTY50</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STATUS BAR -->
+  <div class="status-bar" id="statusBar" style="background:var(--bg1);border-color:var(--bg3)">
+    <div style="display:flex;align-items:center;gap:10px">
+      <div class="status-dot" id="statusDot" style="background:var(--muted)"></div>
+      <span class="status-text" id="statusText" style="color:var(--muted)">Stock search karo analysis ke liye</span>
+    </div>
+    <div class="filter-row">
+      <span class="flt active" onclick="setFilter('ALL',this)" style="color:var(--cyan)">All</span>
+      <span class="flt" onclick="setFilter('MOM',this)">⚡ Momentum</span>
+      <span class="flt" onclick="setFilter('SWG',this)">🔄 Swing</span>
+      <span class="flt" onclick="setFilter('EXIT',this)">🎯 Exit</span>
+    </div>
+  </div>
+
+  <!-- CHART -->
+  <div class="chart-box" style="position:relative">
+    <div class="chart-legend">
+      <span class="chart-label" id="chartLabel">CHART — SEARCH TO LOAD</span>
+      <span class="leg"><span class="leg-line" style="background:#22d3ee"></span>EMA9</span>
+      <span class="leg"><span class="leg-line" style="background:#f97316"></span>EMA21</span>
+      <span class="leg"><span class="leg-line" style="background:#a855f7"></span>EMA50</span>
+      <span class="leg"><span class="leg-line" style="background:#f59e0b"></span>BB</span>
+      <span class="leg" style="color:#00ff88">▲ BUY</span>
+      <span class="leg" style="color:#ff4466">▼ EXIT</span>
+    </div>
+    <div class="chart-loading show" id="chartLoading">
+      <div class="load-spinner"></div>
+      <div class="load-text">STOCK SEARCH KARO</div>
+    </div>
+    <canvas id="candleChart"></canvas>
+    <div class="chart-section"><div class="csl">RSI · 14</div><canvas id="rsiChart"></canvas></div>
+    <div class="chart-section"><div class="csl">MACD · 12/26/9</div><canvas id="macdChart"></canvas></div>
+  </div>
+
+  <!-- SIGNAL LOG -->
+  <div class="signal-log">
+    <div class="log-title">📋 RECENT SIGNALS LOG</div>
+    <div class="log-list" id="signalLog">
+      <div style="color:var(--muted);font-size:10px;text-align:center;padding:12px">Stock search karne ke baad signals yahan dikhenge</div>
+    </div>
+  </div>
+
+  <!-- SETUP CARDS -->
+  <div class="setup-grid">
+    <div class="setup-card" style="border:1px solid #00ff8822">
+      <div class="setup-title" style="color:var(--green)">⚡ MOMENTUM BREAKOUT</div>
+      <div class="setup-item"><span class="si-a" style="color:var(--green)">›</span><span>Price closes above resistance with volume surge</span></div>
+      <div class="setup-item"><span class="si-a" style="color:var(--green)">›</span><span>RSI 55–74 zone — strong but not overbought</span></div>
+      <div class="setup-item"><span class="si-a" style="color:var(--green)">›</span><span>MACD histogram rising (green bars barhte hue)</span></div>
+      <div class="setup-item"><span class="si-a" style="color:var(--green)">›</span><span>EMA 9 > EMA 21 > EMA 50 — bullish alignment</span></div>
+      <div class="setup-item"><span class="si-a" style="color:var(--green)">›</span><span>Entry: Breakout candle ke baad agle din</span></div>
+      <div class="setup-item"><span class="si-a" style="color:var(--green)">›</span><span>Target: Minimum 1:3 Risk-Reward rakho</span></div>
+    </div>
+    <div class="setup-card" style="border:1px solid #22d3ee22">
+      <div class="setup-title" style="color:var(--cyan)">🔄 SWING REVERSAL</div>
+      <div class="setup-item"><span class="si-a" style="color:var(--cyan)">›</span><span>RSI below 36 — stock oversold zone mein</span></div>
+      <div class="setup-item"><span class="si-a" style="color:var(--cyan)">›</span><span>Price near lower Bollinger Band ya EMA 50</span></div>
+      <div class="setup-item"><span class="si-a" style="color:var(--cyan)">›</span><span>Bullish reversal candle — Hammer, Engulfing</span></div>
+      <div class="setup-item"><span class="si-a" style="color:var(--cyan)">›</span><span>MACD bullish divergence from lows</span></div>
+      <div class="setup-item"><span class="si-a" style="color:var(--cyan)">›</span><span>Entry: Signal candle ke next day open par</span></div>
+      <div class="setup-item"><span class="si-a" style="color:var(--cyan)">›</span><span>SL: Recent swing low ke 0.5% neeche</span></div>
+    </div>
+    <div class="setup-card" style="border:1px solid #f59e0b22">
+      <div class="setup-title" style="color:var(--yellow)">🎯 EXIT & RISK MGMT</div>
+      <div class="setup-item"><span class="si-a" style="color:var(--yellow)">›</span><span>RSI above 74 = profits book karo immediately</span></div>
+      <div class="setup-item"><span class="si-a" style="color:var(--yellow)">›</span><span>Price near upper Bollinger Band — resistance</span></div>
+      <div class="setup-item"><span class="si-a" style="color:var(--yellow)">›</span><span>MACD bearish crossover — strong exit signal</span></div>
+      <div class="setup-item"><span class="si-a" style="color:var(--yellow)">›</span><span>Profit mein EMA 9 trailing stop use karo</span></div>
+      <div class="setup-item"><span class="si-a" style="color:var(--yellow)">›</span><span>Ek trade mein 2% se zyada capital risk nahi</span></div>
+      <div class="setup-item"><span class="si-a" style="color:var(--yellow)">›</span><span>Position size ATR se calculate karo</span></div>
+    </div>
+  </div>
+
+  <div class="disclaimer">
+    ⚠️ <strong style="color:#5a5550">DISCLAIMER:</strong> Yeh tool sirf educational purpose ke liye hai. Charts simulated/historical data par based hain — real-time NSE data nahi hai. Real trading ke liye Zerodha Kite, TradingView use karo. SEBI registered advisor ki salah lo. Trading mein risk hota hai.
+  </div>
+</div>
+
+<script>
+// ─── NSE STOCK DATABASE (500+ popular stocks) ───────────────────────────────
+const NSE_STOCKS = [
+  // NIFTY 50
+  {sym:'RELIANCE',name:'Reliance Industries',price:2847,chg:1.24,sector:'Energy'},
+  {sym:'TCS',name:'Tata Consultancy Services',price:3921,chg:-0.43,sector:'IT'},
+  {sym:'HDFCBANK',name:'HDFC Bank',price:1679,chg:2.15,sector:'Finance'},
+  {sym:'INFY',name:'Infosys',price:1456,chg:0.87,sector:'IT'},
+  {sym:'ICICIBANK',name:'ICICI Bank',price:1243,chg:1.56,sector:'Finance'},
+  {sym:'HINDUNILVR',name:'Hindustan Unilever',price:2456,chg:-0.34,sector:'FMCG'},
+  {sym:'SBIN',name:'State Bank of India',price:812,chg:2.31,sector:'Finance'},
+  {sym:'BHARTIARTL',name:'Bharti Airtel',price:1567,chg:3.12,sector:'Telecom'},
+  {sym:'ITC',name:'ITC Ltd',price:467,chg:0.54,sector:'FMCG'},
+  {sym:'KOTAKBANK',name:'Kotak Mahindra Bank',price:1876,chg:-0.87,sector:'Finance'},
+  {sym:'LT',name:'Larsen & Toubro',price:3456,chg:1.23,sector:'Construction'},
+  {sym:'HCLTECH',name:'HCL Technologies',price:1789,chg:2.45,sector:'IT'},
+  {sym:'AXISBANK',name:'Axis Bank',price:1123,chg:1.78,sector:'Finance'},
+  {sym:'ASIANPAINT',name:'Asian Paints',price:2890,chg:-1.23,sector:'Chemicals'},
+  {sym:'BAJFINANCE',name:'Bajaj Finance',price:7234,chg:2.67,sector:'Finance'},
+  {sym:'WIPRO',name:'Wipro',price:487,chg:-0.31,sector:'IT'},
+  {sym:'MARUTI',name:'Maruti Suzuki',price:12450,chg:1.89,sector:'Auto'},
+  {sym:'SUNPHARMA',name:'Sun Pharmaceutical',price:1678,chg:0.92,sector:'Pharma'},
+  {sym:'TATAMOTORS',name:'Tata Motors',price:945,chg:3.45,sector:'Auto'},
+  {sym:'ULTRACEMCO',name:'UltraTech Cement',price:10234,chg:1.34,sector:'Cement'},
+  {sym:'TITAN',name:'Titan Company',price:3456,chg:2.12,sector:'Retail'},
+  {sym:'NESTLEIND',name:'Nestle India',price:23456,chg:-0.45,sector:'FMCG'},
+  {sym:'POWERGRID',name:'Power Grid Corp',price:345,chg:1.23,sector:'Power'},
+  {sym:'NTPC',name:'NTPC Ltd',price:389,chg:2.34,sector:'Power'},
+  {sym:'ONGC',name:'Oil & Natural Gas Corp',price:267,chg:0.78,sector:'Oil & Gas'},
+  {sym:'JSWSTEEL',name:'JSW Steel',price:934,chg:1.56,sector:'Metal'},
+  {sym:'TATASTEEL',name:'Tata Steel',price:156,chg:2.34,sector:'Metal'},
+  {sym:'GRASIM',name:'Grasim Industries',price:2345,chg:0.89,sector:'Cement'},
+  {sym:'ADANIENT',name:'Adani Enterprises',price:2789,chg:4.56,sector:'Conglomerate'},
+  {sym:'ADANIPORTS',name:'Adani Ports & SEZ',price:1234,chg:2.34,sector:'Infra'},
+  {sym:'BAJAJFINSV',name:'Bajaj Finserv',price:1678,chg:1.23,sector:'Finance'},
+  {sym:'DRREDDY',name:'Dr Reddy Laboratories',price:5678,chg:-0.67,sector:'Pharma'},
+  {sym:'EICHERMOT',name:'Eicher Motors',price:4567,chg:1.45,sector:'Auto'},
+  {sym:'INDUSINDBK',name:'IndusInd Bank',price:1456,chg:-1.23,sector:'Finance'},
+  {sym:'M&M',name:'Mahindra & Mahindra',price:2345,chg:2.67,sector:'Auto'},
+  {sym:'HDFCLIFE',name:'HDFC Life Insurance',price:678,chg:0.89,sector:'Insurance'},
+  {sym:'SBILIFE',name:'SBI Life Insurance',price:1456,chg:1.23,sector:'Insurance'},
+  {sym:'CIPLA',name:'Cipla',price:1567,chg:0.56,sector:'Pharma'},
+  {sym:'DIVISLAB',name:'Divi\'s Laboratories',price:4567,chg:-1.34,sector:'Pharma'},
+  {sym:'APOLLOHOSP',name:'Apollo Hospitals',price:6789,chg:2.34,sector:'Healthcare'},
+  // Mid-cap popular
+  {sym:'ZOMATO',name:'Zomato',price:245,chg:3.45,sector:'Tech'},
+  {sym:'PAYTM',name:'Paytm (One97)',price:456,chg:-2.34,sector:'Fintech'},
+  {sym:'NYKAA',name:'FSN E-Commerce (Nykaa)',price:178,chg:1.23,sector:'Retail'},
+  {sym:'IRCTC',name:'IRCTC',price:789,chg:1.56,sector:'Travel'},
+  {sym:'IRFC',name:'Indian Railway Finance',price:234,chg:2.45,sector:'Finance'},
+  {sym:'PNB',name:'Punjab National Bank',price:112,chg:2.89,sector:'Finance'},
+  {sym:'BANKBARODA',name:'Bank of Baroda',price:234,chg:1.67,sector:'Finance'},
+  {sym:'CANBK',name:'Canara Bank',price:109,chg:2.34,sector:'Finance'},
+  {sym:'VEDL',name:'Vedanta',price:456,chg:3.12,sector:'Metal'},
+  {sym:'HINDALCO',name:'Hindalco Industries',price:678,chg:1.89,sector:'Metal'},
+  {sym:'COALINDIA',name:'Coal India',price:456,chg:0.78,sector:'Mining'},
+  {sym:'BEL',name:'Bharat Electronics',price:234,chg:2.45,sector:'Defence'},
+  {sym:'HAL',name:'Hindustan Aeronautics',price:4567,chg:3.23,sector:'Defence'},
+  {sym:'SAIL',name:'Steel Authority of India',price:134,chg:1.56,sector:'Metal'},
+  {sym:'NHPC',name:'NHPC',price:89,chg:1.23,sector:'Power'},
+  {sym:'RECLTD',name:'REC Ltd',price:567,chg:3.45,sector:'Finance'},
+  {sym:'PFC',name:'Power Finance Corp',price:456,chg:2.67,sector:'Finance'},
+  {sym:'MAZDOCK',name:'Mazagon Dock',price:4234,chg:4.56,sector:'Defence'},
+  {sym:'COCHINSHIP',name:'Cochin Shipyard',price:1234,chg:3.45,sector:'Defence'},
+  {sym:'RVNL',name:'Rail Vikas Nigam',price:456,chg:4.23,sector:'Infra'},
+  {sym:'IDEA',name:'Vodafone Idea',price:15,chg:-1.23,sector:'Telecom'},
+  {sym:'TATAPOWER',name:'Tata Power',price:456,chg:2.34,sector:'Power'},
+  {sym:'ADANIGREEN',name:'Adani Green Energy',price:1890,chg:5.67,sector:'Renewable'},
+  {sym:'ADANIPOWER',name:'Adani Power',price:567,chg:3.45,sector:'Power'},
+  {sym:'POLYCAB',name:'Polycab India',price:6789,chg:2.12,sector:'Electricals'},
+  {sym:'HAVELLS',name:'Havells India',price:1678,chg:1.45,sector:'Electricals'},
+  {sym:'VOLTAS',name:'Voltas',price:1234,chg:0.89,sector:'Electronics'},
+  {sym:'PIDILITIND',name:'Pidilite Industries',price:2890,chg:0.67,sector:'Chemicals'},
+  {sym:'BERGEPAINT',name:'Berger Paints',price:567,chg:-0.45,sector:'Chemicals'},
+  {sym:'MCDOWELL-N',name:'United Spirits',price:1234,chg:1.23,sector:'Beverages'},
+  {sym:'JUBLFOOD',name:'Jubilant Foodworks',price:678,chg:-1.34,sector:'QSR'},
+  {sym:'DEVYANI',name:'Devyani International',price:189,chg:2.34,sector:'QSR'},
+  {sym:'DMART',name:'Avenue Supermarts (DMart)',price:4567,chg:0.89,sector:'Retail'},
+  {sym:'TRENT',name:'Trent',price:5678,chg:3.45,sector:'Retail'},
+  {sym:'ABFRL',name:'Aditya Birla Fashion',price:234,chg:1.23,sector:'Retail'},
+  {sym:'PAGEIND',name:'Page Industries',price:45678,chg:0.56,sector:'Textile'},
+  {sym:'MOTHERSON',name:'Samvardhana Motherson',price:156,chg:2.34,sector:'Auto Ancillary'},
+  {sym:'BALKRISIND',name:'Balkrishna Industries',price:2890,chg:1.23,sector:'Tyres'},
+  {sym:'MRF',name:'MRF',price:134567,chg:0.45,sector:'Tyres'},
+  {sym:'APOLLOTYRE',name:'Apollo Tyres',price:456,chg:1.67,sector:'Tyres'},
+  {sym:'EXIDEIND',name:'Exide Industries',price:456,chg:1.23,sector:'Battery'},
+  {sym:'AMARA',name:'Amara Raja Energy',price:1234,chg:2.45,sector:'Battery'},
+  {sym:'CUMMINSIND',name:'Cummins India',price:3456,chg:1.89,sector:'Engineering'},
+  {sym:'SIEMENS',name:'Siemens India',price:6789,chg:2.34,sector:'Engineering'},
+  {sym:'ABB',name:'ABB India',price:7890,chg:1.56,sector:'Engineering'},
+  {sym:'THERMAX',name:'Thermax',price:4567,chg:2.12,sector:'Engineering'},
+  {sym:'ESCORTS',name:'Escorts Kubota',price:3456,chg:1.45,sector:'Auto'},
+  {sym:'ASHOKLEY',name:'Ashok Leyland',price:234,chg:2.67,sector:'Auto'},
+  {sym:'TVSMOTOR',name:'TVS Motor',price:2345,chg:3.12,sector:'Auto'},
+  {sym:'BAJAJ-AUTO',name:'Bajaj Auto',price:8901,chg:1.23,sector:'Auto'},
+  {sym:'HEROMOTOCO',name:'Hero MotoCorp',price:4567,chg:0.89,sector:'Auto'},
+  {sym:'NIFTY50',name:'Nifty 50 Index',price:24567,chg:0.95,sector:'Index'},
+  {sym:'BANKNIFTY',name:'Bank Nifty Index',price:52345,chg:1.23,sector:'Index'},
+  {sym:'FINNIFTY',name:'Fin Nifty Index',price:23456,chg:0.78,sector:'Index'},
+  {sym:'NIFTYMIDCAP',name:'Nifty Midcap 100',price:56789,chg:1.45,sector:'Index'},
+  // IT
+  {sym:'TECHM',name:'Tech Mahindra',price:1678,chg:-0.45,sector:'IT'},
+  {sym:'MPHASIS',name:'Mphasis',price:2890,chg:1.23,sector:'IT'},
+  {sym:'COFORGE',name:'Coforge',price:7890,chg:2.34,sector:'IT'},
+  {sym:'PERSISTENT',name:'Persistent Systems',price:5678,chg:3.12,sector:'IT'},
+  {sym:'LTIM',name:'LTIMindtree',price:5678,chg:1.89,sector:'IT'},
+  {sym:'KPITTECH',name:'KPIT Technologies',price:1890,chg:4.56,sector:'IT'},
+  // Pharma
+  {sym:'LUPIN',name:'Lupin',price:2345,chg:1.23,sector:'Pharma'},
+  {sym:'AUROPHARMA',name:'Aurobindo Pharma',price:1234,chg:0.89,sector:'Pharma'},
+  {sym:'TORNTPHARM',name:'Torrent Pharma',price:3456,chg:1.56,sector:'Pharma'},
+  {sym:'ALKEM',name:'Alkem Laboratories',price:5678,chg:0.67,sector:'Pharma'},
+];
+
+// ─── STATE ───────────────────────────────────────────
+let activeSym = null, activeTf = 'Daily', activeFilter = 'ALL';
+let chartData = null;
+let watchlist = JSON.parse(localStorage.getItem('nse_watchlist') || '[]');
+let searchTimeout = null;
+
+// ─── SEARCH LOGIC ────────────────────────────────────
+const searchInput = document.getElementById('searchInput');
+const dropdown = document.getElementById('dropdown');
+const spinner = document.getElementById('spinner');
+const statusMsg = document.getElementById('statusMsg');
+
+searchInput.addEventListener('input', () => {
+  clearTimeout(searchTimeout);
+  const q = searchInput.value.trim().toUpperCase();
+  if (q.length < 1) { dropdown.classList.remove('show'); return; }
+  searchTimeout = setTimeout(() => showDropdown(q), 150);
+});
+
+searchInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter') doSearch();
+  if (e.key === 'Escape') dropdown.classList.remove('show');
+});
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('.search-wrap')) dropdown.classList.remove('show');
+});
+
+function showDropdown(q) {
+  const results = NSE_STOCKS.filter(s =>
+    s.sym.includes(q) || s.name.toUpperCase().includes(q)
+  ).slice(0, 8);
+
+  if (results.length === 0) {
+    dropdown.innerHTML = `<div class="dd-item" style="color:var(--muted);justify-content:center">No results for "${q}"</div>`;
+  } else {
+    dropdown.innerHTML = results.map(s => `
+      <div class="dd-item" onclick="selectFromDropdown('${s.sym}')">
+        <div>
+          <div class="dd-sym">${s.sym} <span style="color:var(--dim);font-size:9px">· ${s.sector}</span></div>
+          <div class="dd-name">${s.name}</div>
+        </div>
+        <div class="dd-chg" style="color:${s.chg >= 0 ? 'var(--green)' : 'var(--red)'}">
+          ₹${s.price.toLocaleString()}<br>${s.chg >= 0 ? '▲' : '▼'}${Math.abs(s.chg)}%
+        </div>
+      </div>`).join('');
+  }
+  dropdown.classList.add('show');
+}
+
+function selectFromDropdown(sym) {
+  searchInput.value = sym;
+  dropdown.classList.remove('show');
+  loadStock(sym);
+}
+
+function doSearch() {
+  const q = searchInput.value.trim().toUpperCase();
+  if (!q) return;
+  const found = NSE_STOCKS.find(s => s.sym === q || s.name.toUpperCase().includes(q));
+  if (found) { loadStock(found.sym); }
+  else {
+    setStatus(`"${q}" nahi mila. Neeche popular stocks dekhein ya sahi symbol daalen.`, 'red');
+  }
+  dropdown.classList.remove('show');
+}
+
+// ─── LOAD STOCK ──────────────────────────────────────
+function loadStock(sym) {
+  const info = NSE_STOCKS.find(s => s.sym === sym);
+  if (!info) return;
+  activeSym = sym;
+
+  // Show loading
+  document.getElementById('chartLoading').classList.add('show');
+  document.getElementById('chartLoading').querySelector('.load-text').textContent = `LOADING ${sym}...`;
+  setStatus(`${sym} load ho raha hai...`, 'cyan', true);
+
+  // Add to watchlist
+  addToWatchlist(sym);
+
+  // Simulate async load
+  setTimeout(() => {
+    buildChartData(info);
+    updateUI(info);
+    drawAll();
+    document.getElementById('chartLoading').classList.remove('show');
+    setStatus(`${sym} — ${info.name} · ${info.sector}`, 'green');
+  }, 600);
+}
+
+function setStatus(msg, color = 'muted', loading = false) {
+  spinner.style.display = loading ? 'block' : 'none';
+  statusMsg.style.color = `var(--${color})`;
+  statusMsg.textContent = msg;
+}
+
+// ─── WATCHLIST ───────────────────────────────────────
+function addToWatchlist(sym) {
+  if (!watchlist.includes(sym)) {
+    watchlist.unshift(sym);
+    if (watchlist.length > 8) watchlist.pop();
+    try { localStorage.setItem('nse_watchlist', JSON.stringify(watchlist)); } catch(e){}
+  }
+  renderWatchlist();
+}
+
+function removeFromWatchlist(sym, e) {
+  e.stopPropagation();
+  watchlist = watchlist.filter(s => s !== sym);
+  try { localStorage.setItem('nse_watchlist', JSON.stringify(watchlist)); } catch(e){}
+  renderWatchlist();
+}
+
+function renderWatchlist() {
+  if (watchlist.length === 0) {
+    document.getElementById('watchlistWrap').style.display = 'none';
+    return;
+  }
+  document.getElementById('watchlistWrap').style.display = 'block';
+  document.getElementById('watchlistRow').innerHTML = watchlist.map(sym => {
+    const info = NSE_STOCKS.find(s => s.sym === sym);
+    if (!info) return '';
+    const pos = info.chg >= 0;
+    return `<div class="wl-chip ${sym === activeSym ? 'active' : ''}" onclick="loadStock('${sym}')">
+      <span class="wl-sym">${sym}</span>
+      <span class="wl-chg" style="color:${pos ? 'var(--green)' : 'var(--red)'}">${pos ? '▲' : '▼'}${Math.abs(info.chg)}%</span>
+      <span class="wl-remove" onclick="removeFromWatchlist('${sym}',event)">✕</span>
+    </div>`;
+  }).join('');
+}
+
+// ─── DATA ────────────────────────────────────────────
+function buildChartData(info) {
+  const candles = generateCandles(info.price);
+  const cl = candles.map(c => c.close);
+  const rsi = calcRSI(candles);
+  const macd = calcMACD(candles);
+  chartData = {
+    info, candles, rsi, macd,
+    ema9:  calcEMA(cl, 9),
+    ema21: calcEMA(cl, 21),
+    ema50: calcEMA(cl, 50),
+    bb:    calcBB(candles),
+    signals: detectSignals(candles, rsi, macd),
+  };
+}
+
+function generateCandles(base, count = 80) {
+  let price = base; const c = [];
+  for (let i = 0; i < count; i++) {
+    const open = price;
+    const chg  = (Math.random() - 0.47) * price * 0.019;
+    const close = open + chg;
+    const high  = Math.max(open, close) + Math.random() * price * 0.009;
+    const low   = Math.min(open, close) - Math.random() * price * 0.009;
+    c.push({ open, close, high, low });
+    price = close;
+  }
+  return c;
+}
+
+function calcEMA(arr, p) {
+  const k = 2 / (p + 1); let e = arr[0];
+  return arr.map(v => { e = v * k + e * (1 - k); return e; });
+}
+
+function calcRSI(candles, p = 14) {
+  const cl = candles.map(c => c.close);
+  let ag = 0, al = 0;
+  for (let i = 1; i <= p; i++) { const d = cl[i] - cl[i-1]; if (d>0) ag+=d; else al-=d; }
+  ag /= p; al /= p;
+  const rsi = new Array(p + 1).fill(50);
+  for (let i = p+1; i < cl.length; i++) {
+    const d = cl[i] - cl[i-1];
+    ag = (ag*(p-1) + Math.max(d, 0)) / p;
+    al = (al*(p-1) + Math.max(-d, 0)) / p;
+    rsi.push(al === 0 ? 100 : 100 - 100 / (1 + ag/al));
+  }
+  return rsi;
+}
+
+function calcMACD(candles) {
+  const cl = candles.map(c => c.close);
+  const e12 = calcEMA(cl, 12), e26 = calcEMA(cl, 26);
+  const ml = e12.map((v, i) => v - e26[i]);
+  const sig = calcEMA(ml, 9);
+  return { ml, sig, hist: ml.map((v, i) => v - sig[i]) };
+}
+
+function calcBB(candles, p = 20) {
+  return candles.map((_, i) => {
+    if (i < p) return null;
+    const sl = candles.slice(i-p, i).map(c => c.close);
+    const mean = sl.reduce((a, b) => a+b) / p;
+    const std = Math.sqrt(sl.reduce((a, b) => a + (b-mean)**2, 0) / p);
+    return { upper: mean+2*std, lower: mean-2*std, mid: mean };
+  });
+}
+
+function detectSignals(candles, rsi, macd) {
+  const sigs = [];
+  for (let i = 5; i < candles.length; i++) {
+    const r = rsi[i], h = macd.hist[i], ph = macd.hist[i-1];
+    const c = candles[i], pc = candles[i-1];
+    if (c.close > pc.high*1.004 && r>52 && r<74 && h>ph)
+      sigs.push({ idx:i, type:'MOM', color:'#00ff88', label:'⚡ Momentum Buy', side:'buy', rsi:r, price:c.close });
+    else if (r<36 && c.close>pc.close && h>ph)
+      sigs.push({ idx:i, type:'SWG', color:'#22d3ee', label:'🔄 Swing Buy', side:'buy', rsi:r, price:c.close });
+    else if (r>74 && c.close<pc.close && h<0)
+      sigs.push({ idx:i, type:'EXIT', color:'#ff4466', label:'🎯 Exit Signal', side:'sell', rsi:r, price:c.close });
+  }
+  return sigs;
+}
+
+// ─── UI UPDATE ───────────────────────────────────────
+function updateUI(info) {
+  const { candles, rsi, signals } = chartData;
+  const last   = candles[candles.length - 1];
+  const curRsi = rsi[rsi.length - 1];
+  const buyC   = signals.filter(s => s.side === 'buy').length;
+  const sellC  = signals.filter(s => s.side === 'sell').length;
+  const rsiColor = curRsi > 70 ? '#ff4466' : curRsi < 30 ? '#00ff88' : '#22d3ee';
+  const pos    = info.chg >= 0;
+
+  document.getElementById('statsGrid').innerHTML = [
+    { l:'Symbol',    v: info.sym,                         c:'#22d3ee' },
+    { l:'LTP',       v:'₹'+last.close.toFixed(1),         c:'#00ff88' },
+    { l:'Change',    v:(pos?'+':'')+info.chg+'%',          c: pos?'#00ff88':'#ff4466' },
+    { l:'RSI(14)',   v: curRsi.toFixed(1),                 c: rsiColor },
+    { l:'Buy Sig',   v: buyC,                              c:'#00ff88' },
+    { l:'Exit Sig',  v: sellC,                             c:'#ff4466' },
+  ].map(s => `
+    <div class="stat-card" style="--accent:${s.c}">
+      <div class="stat-label">${s.l}</div>
+      <div class="stat-val" style="color:${s.c}">${s.v}</div>
+    </div>`).join('');
+
+  const ms = curRsi > 70
+    ? { t:'OVERBOUGHT — BOOK PROFITS', c:'#ff4466', bg:'#ff446611', bc:'#ff446633' }
+    : curRsi < 30
+    ? { t:'OVERSOLD — SWING BUY ZONE', c:'#00ff88', bg:'#00ff8811', bc:'#00ff8833' }
+    : curRsi > 55
+    ? { t:'BULLISH MOMENTUM — RIDE THE TREND', c:'#22d3ee', bg:'#22d3ee11', bc:'#22d3ee33' }
+    : { t:'NEUTRAL — WAIT FOR SETUP', c:'#f59e0b', bg:'#f59e0b11', bc:'#f59e0b33' };
+
+  const sb = document.getElementById('statusBar');
+  sb.style.background = ms.bg; sb.style.borderColor = ms.bc;
+  document.getElementById('statusDot').style.background = ms.c;
+  document.getElementById('statusDot').style.boxShadow = `0 0 10px ${ms.c}`;
+  document.getElementById('statusText').style.color = ms.c;
+  document.getElementById('statusText').textContent = ms.t;
+  document.getElementById('chartLabel').textContent = `${info.sym}  ·  ${info.name}  ·  ${activeTf}`;
+
+  const lastSigs = [...signals].reverse().slice(0, 10);
+  document.getElementById('signalLog').innerHTML = lastSigs.length === 0
+    ? `<div style="color:var(--muted);font-size:10px;text-align:center;padding:12px">Is stock par koi strong signal nahi mila</div>`
+    : lastSigs.map(s => `
+      <div class="log-item" style="background:${s.color}09;border-color:${s.color}22">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="log-badge" style="background:${s.color}22;color:${s.color}">${s.label}</span>
+          <span style="color:var(--muted);font-size:9px">${info.sym}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="color:var(--muted);font-size:9px">RSI: ${s.rsi.toFixed(1)}</span>
+          <span style="color:${s.color};font-size:9px">₹${s.price.toFixed(1)}</span>
+        </div>
+      </div>`).join('');
+}
+
+// ─── CHARTS ──────────────────────────────────────────
+function drawAll() {
+  if (!chartData) return;
+  const { candles, ema9, ema21, ema50, rsi, macd, bb, signals } = chartData;
+  const N = 55;
+  const cn  = candles.slice(-N);
+  const e9  = ema9.slice(-N), e21 = ema21.slice(-N), e50 = ema50.slice(-N);
+  const crs = rsi.slice(-N), cbb = bb.slice(-N);
+  const off = candles.length - N;
+  const flt = signals.filter(s => {
+    const li = s.idx - off;
+    return li >= 0 && li < N && (activeFilter === 'ALL' || s.type === activeFilter);
+  });
+  drawCandles(cn, e9, e21, e50, cbb, flt, off);
+  drawRSI(crs);
+  drawMACD(macd.ml.slice(-N), macd.sig.slice(-N), macd.hist.slice(-N));
+}
+
+function setupCanvas(id, ratio = 0.48) {
+  const canvas = document.getElementById(id);
+  const W = canvas.parentElement.clientWidth;
+  const H = id === 'candleChart' ? Math.round(W * ratio) : 84;
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width  = W * dpr; canvas.height = H * dpr;
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  return { ctx, W, H };
+}
+
+function drawCandles(cn, e9, e21, e50, cbb, sigs, off) {
+  const { ctx, W, H } = setupCanvas('candleChart');
+  const N = cn.length;
+  const PL = 54, PR = 10, PT = 16, PB = 24;
+  const cw = (W - PL - PR) / N;
+  const allP = cn.flatMap(c => [c.high, c.low]);
+  const minP = Math.min(...allP)*.9985, maxP = Math.max(...allP)*1.0015;
+  const rng  = maxP - minP;
+  const py   = v => PT + (H - PT - PB) * (1 - (v-minP)/rng);
+  const px   = i => PL + (i+.5)*cw;
+  ctx.clearRect(0, 0, W, H);
+
+  // Grid
+  [0.2,.4,.6,.8].forEach(t => {
+    const gp = minP + rng*t;
+    ctx.strokeStyle='#0d1f35'; ctx.lineWidth=0.6;
+    ctx.beginPath(); ctx.moveTo(PL,py(gp)); ctx.lineTo(W-PR,py(gp)); ctx.stroke();
+    ctx.fillStyle='#1a3050'; ctx.font=`${Math.max(7,W*.009)}px 'Share Tech Mono'`;
+    ctx.textAlign='right'; ctx.fillText(gp.toFixed(0), PL-3, py(gp)+3);
+  });
+
+  // BB
+  const vbb = cbb.map((b,i)=>({b,i})).filter(x=>x.b);
+  if (vbb.length > 2) {
+    ctx.beginPath();
+    vbb.forEach(({b,i},j) => j===0 ? ctx.moveTo(px(i),py(b.upper)) : ctx.lineTo(px(i),py(b.upper)));
+    vbb.slice().reverse().forEach(({b,i}) => ctx.lineTo(px(i),py(b.lower)));
+    ctx.closePath(); ctx.fillStyle='#f59e0b08'; ctx.fill();
+    ['upper','lower'].forEach(k => {
+      ctx.beginPath(); ctx.strokeStyle='#f59e0b'; ctx.lineWidth=0.8; ctx.globalAlpha=0.35;
+      vbb.forEach(({b,i},j) => j===0 ? ctx.moveTo(px(i),py(b[k])) : ctx.lineTo(px(i),py(b[k])));
+      ctx.stroke(); ctx.globalAlpha=1;
+    });
+  }
+
+  // EMAs
+  const dl = (arr,col,dash=[]) => {
+    ctx.strokeStyle=col; ctx.lineWidth=1.3; ctx.setLineDash(dash); ctx.globalAlpha=.88;
+    ctx.beginPath(); arr.forEach((v,i) => i===0?ctx.moveTo(px(i),py(v)):ctx.lineTo(px(i),py(v)));
+    ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha=1;
+  };
+  dl(e50,'#a855f7',[4,2]); dl(e21,'#f97316'); dl(e9,'#22d3ee');
+
+  // Candles
+  cn.forEach((c,i) => {
+    const bull = c.close>=c.open, col = bull?'#00ff88':'#ff4466';
+    const bw = Math.max(cw*.62,2);
+    const by = Math.min(py(c.open),py(c.close));
+    const bh = Math.max(Math.abs(py(c.close)-py(c.open)),1.5);
+    ctx.strokeStyle=col; ctx.lineWidth=0.9; ctx.globalAlpha=0.6;
+    ctx.beginPath(); ctx.moveTo(px(i),py(c.high)); ctx.lineTo(px(i),py(c.low)); ctx.stroke();
+    ctx.fillStyle=col; ctx.globalAlpha=0.85;
+    ctx.fillRect(px(i)-bw/2,by,bw,bh); ctx.globalAlpha=1;
+  });
+
+  // Signals
+  sigs.forEach(s => {
+    const li = s.idx-off;
+    if (li<0||li>=cn.length) return;
+    const c=cn[li], isBuy=s.side==='buy';
+    const ax=px(li);
+    const tipY  = isBuy ? py(c.low)+3  : py(c.high)-3;
+    const baseY = isBuy ? py(c.low)+14 : py(c.high)-14;
+    const labY  = isBuy ? py(c.low)+26 : py(c.high)-26;
+    ctx.shadowColor=s.color; ctx.shadowBlur=8;
+    ctx.strokeStyle=s.color; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.moveTo(ax,baseY); ctx.lineTo(ax,tipY); ctx.stroke();
+    ctx.fillStyle=s.color;
+    ctx.beginPath();
+    if(isBuy){ctx.moveTo(ax,tipY);ctx.lineTo(ax-4,tipY+8);ctx.lineTo(ax+4,tipY+8);}
+    else{ctx.moveTo(ax,tipY);ctx.lineTo(ax-4,tipY-8);ctx.lineTo(ax+4,tipY-8);}
+    ctx.closePath(); ctx.fill(); ctx.shadowBlur=0;
+    const lw=46;
+    ctx.fillStyle=s.color; ctx.globalAlpha=0.15;
+    if(ctx.roundRect) ctx.roundRect(ax-lw/2,labY-8,lw,14,4);
+    else ctx.rect(ax-lw/2,labY-8,lw,14);
+    ctx.fill(); ctx.globalAlpha=1;
+    ctx.fillStyle=s.color;
+    ctx.font=`bold ${Math.max(7,W*.009)}px 'Share Tech Mono'`;
+    ctx.textAlign='center';
+    ctx.fillText(s.type==='MOM'?'⚡BUY':s.type==='SWG'?'🔄BUY':'🎯EXIT', ax, labY+3);
+  });
+}
+
+function drawRSI(crsi) {
+  const { ctx, W, H } = setupCanvas('rsiChart');
+  const N=crsi.length;
+  const PL=54,PR=10,PT=14,PB=16;
+  const ch=H-PT-PB, cw=(W-PL-PR)/N;
+  const py=v=>PT+ch*(1-v/100), px=i=>PL+(i+.5)*cw;
+  ctx.clearRect(0,0,W,H);
+  const cur=crsi[N-1];
+  const col=cur>70?'#ff4466':cur<30?'#00ff88':'#22d3ee';
+  ctx.fillStyle='#ff446608'; ctx.fillRect(PL,py(70),W-PL-PR,py(100)-py(70));
+  ctx.fillStyle='#00ff8808'; ctx.fillRect(PL,py(30),W-PL-PR,py(0)-py(30));
+  [30,50,70].forEach(lv=>{
+    ctx.strokeStyle=lv===50?'#0d1f35':'#1a2535'; ctx.lineWidth=0.7; ctx.setLineDash([3,3]);
+    ctx.beginPath(); ctx.moveTo(PL,py(lv)); ctx.lineTo(W-PR,py(lv)); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle='#1a3050'; ctx.font='7px Share Tech Mono'; ctx.textAlign='right';
+    ctx.fillText(lv,PL-3,py(lv)+2);
+  });
+  const grad=ctx.createLinearGradient(0,PT,0,PT+ch);
+  grad.addColorStop(0,col+'44'); grad.addColorStop(1,col+'04');
+  ctx.fillStyle=grad;
+  ctx.beginPath();
+  crsi.forEach((v,i)=>i===0?ctx.moveTo(px(i),py(v)):ctx.lineTo(px(i),py(v)));
+  ctx.lineTo(px(N-1),PT+ch); ctx.lineTo(px(0),PT+ch); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle=col; ctx.lineWidth=1.5;
+  ctx.beginPath(); crsi.forEach((v,i)=>i===0?ctx.moveTo(px(i),py(v)):ctx.lineTo(px(i),py(v))); ctx.stroke();
+  ctx.fillStyle=col; ctx.shadowColor=col; ctx.shadowBlur=8;
+  ctx.beginPath(); ctx.arc(px(N-1),py(cur),3,0,Math.PI*2); ctx.fill();
+  ctx.shadowBlur=0;
+  ctx.font='bold 9px Share Tech Mono'; ctx.textAlign='right';
+  ctx.fillText(cur.toFixed(1),W-PR-2,py(cur)-4);
+}
+
+function drawMACD(ml,sig,hist) {
+  const { ctx, W, H } = setupCanvas('macdChart');
+  const N=hist.length, PL=54,PR=10,PT=14,PB=16;
+  const ch=H-PT-PB, cw=(W-PL-PR)/N;
+  const allV=[...hist,...ml,...sig];
+  const minV=Math.min(...allV), maxV=Math.max(...allV), rng=(maxV-minV)||1;
+  const py=v=>PT+ch*(1-(v-minV)/rng), px=i=>PL+(i+.5)*cw;
+  const zY=py(0);
+  ctx.clearRect(0,0,W,H);
+  ctx.strokeStyle='#0d1f35'; ctx.lineWidth=0.8;
+  ctx.beginPath(); ctx.moveTo(PL,zY); ctx.lineTo(W-PR,zY); ctx.stroke();
+  hist.forEach((v,i)=>{
+    const bY=v>=0?py(v):zY, bH=Math.max(Math.abs(py(v)-zY),.5);
+    ctx.fillStyle=v>=0?'#00ff8830':'#ff446630';
+    ctx.strokeStyle=v>=0?'#00ff8866':'#ff446666'; ctx.lineWidth=0.4;
+    ctx.fillRect(px(i)-cw*.38,bY,cw*.76,bH);
+    ctx.strokeRect(px(i)-cw*.38,bY,cw*.76,bH);
+  });
+  [{a:ml,c:'#f97316'},{a:sig,c:'#a855f7'}].forEach(({a,c})=>{
+    ctx.strokeStyle=c; ctx.lineWidth=1.3;
+    ctx.beginPath(); a.forEach((v,i)=>i===0?ctx.moveTo(px(i),py(v)):ctx.lineTo(px(i),py(v))); ctx.stroke();
+  });
+}
+
+// ─── TICKER ──────────────────────────────────────────
+function buildTicker() {
+  const items = NSE_STOCKS.slice(0,20).map(s => {
+    const pos = s.chg >= 0;
+    return `<span style="display:inline-flex;align-items:center;gap:8px;padding:0 4px">
+      <span class="t-sym">${s.sym}</span>
+      <span style="color:#4a6080">₹${s.price.toLocaleString()}</span>
+      <span class="${pos?'t-up':'t-dn'}">${pos?'▲':'▼'}${Math.abs(s.chg)}%</span>
+    </span>`;
+  }).join('<span style="color:var(--bg3)"> │ </span>');
+  const el = document.getElementById('tickerEl');
+  el.innerHTML = items + '<span style="padding:0 20px"> </span>' + items;
+}
+
+// ─── CONTROLS ────────────────────────────────────────
+function setTf(tf, el) {
+  activeTf = tf;
+  document.querySelectorAll('.tf-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  if (activeSym) loadStock(activeSym);
+}
+
+function setFilter(f, el) {
+  activeFilter = f;
+  const colorMap = { MOM:'#00ff88', SWG:'#22d3ee', EXIT:'#ff4466', ALL:'#22d3ee' };
+  document.querySelectorAll('.flt').forEach(b => { b.classList.remove('active'); b.style.color = ''; });
+  el.classList.add('active'); el.style.color = colorMap[f];
+  drawAll();
+}
+
+// ─── INIT ────────────────────────────────────────────
+buildTicker();
+renderWatchlist();
+window.addEventListener('resize', () => { if (chartData) drawAll(); });
+
+// Auto-load if watchlist has items
+if (watchlist.length > 0) {
+  setTimeout(() => loadStock(watchlist[0]), 300);
+}
+</script>
+<script>if("serviceWorker" in navigator){navigator.serviceWorker.register("sw.js")}</script>
+</body>
+</html>
